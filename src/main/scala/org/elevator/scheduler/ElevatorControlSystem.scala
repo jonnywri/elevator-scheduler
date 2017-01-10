@@ -33,10 +33,11 @@ trait ElevatorControlSystem {
   /**
     * Registers a request object with a floor for the call and direction to go.
     *
-    * @param request elevator request object
+    * @param floor floor level at which the pickup is requested
+    * @param direction direction in which the request is travelling
     * @return identifier of the elevator serving the request
     */
-  def pickup(request: ElevatorRequest): Future[Option[Int]]
+  def pickup(floor: Int, direction: Direction): Future[Option[Int]]
 
   /**
     * Steps forward the simulation - in some implementations this method may be no-op.

@@ -1,6 +1,10 @@
 package org.elevator.scheduler
 
+import java.util.concurrent.CountDownLatch
+
 import akka.actor.Actor
+
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * Minimum defintion of an elevator - has a unique identifier, a list of current destinations, a list of current
@@ -28,15 +32,55 @@ trait Elevator extends Actor {
 
 /**
   * Mechanisms by which elevators can report back their current status.
+  *
+  * In a perfect world, each of these would be a set of actors in their own right.
   */
-class ElevatorStatusRequest(statusCallback: ElevatorStatusCallback)
-class ElevatorStatusCallback(expectedReporters: Int, timeout: Int) {
+case class ElevatorStatus(id: Int, floor: Int, direction: Option[Direction])
+case class ElevatorStatusRequest(callback: ElevatorStatusCallback)
+// This should really be implemented as a countdown latch, but 4 hours
+class ElevatorStatusCallback(expectedReporters: Int) extends CountDownLatch(expectedReporters: Int) {
+
+  private var reportedStatuses: ArrayBuffer[ElevatorStatus] = ArrayBuffer()
+  def status = reportedStatuses
 
   def report(elevatorStatus: ElevatorStatus): Unit = {
-
+    reportedStatuses += elevatorStatus
+    countDown()
   }
 }
 
-case class ElevatorRequest(floor: Int, direction: Direction)
+/**
+  * Basic representation of the tools to manage messages for requests to actors and actors ability to claim a request.
+  */
+case class ElevatorRequest(id: Int, floor: Int, direction: Direction, callback: ElevatorRequestCallback)
+class ElevatorRequestCallback(requestId: Int) extends CountDownLatch(1) {
+  /**
+    * Exposes the id of the elevator which accepted the request.
+    */
+  var acceptedElevatorId: Option[Int] = None
+  def acceptedId = acceptedElevatorId
+
+  /**
+    * Accepts the pending request.
+    *
+    * @return whether or not this claim was accepted, as it may have already been claimed.
+    */
+  def accept(elevatorId: Int): Boolean = {
+    this.synchronized {
+       getCount match {
+        case 1 => {
+          acceptedElevatorId = Some(elevatorId)
+          countDown()
+          true
+        }
+        case _ => {
+          false // this should really do some logging
+        }
+      }
+    }
+  }
+}
+
+
 case class ElevatorConfig(capacity: Int)
-case class ElevatorStatus(floor: Int, direction: Direction)
+
