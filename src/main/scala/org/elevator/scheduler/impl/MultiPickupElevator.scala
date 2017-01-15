@@ -13,5 +13,5 @@ case class MultiPickupElevator(id: Int, capacity: Int = 1) extends Elevator {
   override def receive = ???
   override def claim(request: ElevatorRequest) = ???
   override def report(statusRequest: ElevatorStatusRequest): Unit = ???
-  override def step = ???
+  override def step(stepRequest: ElevatorStepRequest) = ???
 }

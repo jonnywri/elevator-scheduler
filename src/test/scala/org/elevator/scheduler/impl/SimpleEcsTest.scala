@@ -85,24 +85,65 @@ class SimpleEcsTest extends FunSpec with MustMatchers with BeforeAndAfterEach {
 
       pickup1 onComplete {
         case Success(Some(t)) => {
-          elevatorStatuses.find((s: ElevatorStatus) => s.id.equals(t)).get must be(ElevatorStatus(t, 1, Some(UP)))
+          elevatorStatuses.find((s: ElevatorStatus) => s.id.equals(t)) match {
+            case Some(ElevatorStatus(t, 1, Some(UP), None, _)) =>
+            case _ => fail("Failing test due to missing match.")
+          }
         }
-        case _ => fail("failing the test")
+        case _ => fail("Failing the test due to no completion.")
       }
     }
 
     it("should be able to step") {
       val ecs = new SimpleEcs(10)
       ecs.create(5)
+      val pickup1: Future[Option[Int]] = ecs.pickup(6, DOWN)
+      Await.result(pickup1, Duration.create(1000L, TimeUnit.MILLISECONDS))
+      ecs.queuedRequests.size must be(0)
+      val elevatorStatuses = ecs.status()
+      elevatorStatuses.size must be(1)
+      ecs.step
+
+      val updatedElevatorStatuses = ecs.status()
+      updatedElevatorStatuses.head.floor must be (2)
+      updatedElevatorStatuses.head.direction must be (Some(UP))
+    }
+
+    it("should be able to make multiple steps") {
+      val ecs = new SimpleEcs(10)
       ecs.create(5)
       val pickup1: Future[Option[Int]] = ecs.pickup(6, DOWN)
       Await.result(pickup1, Duration.create(1000L, TimeUnit.MILLISECONDS))
       ecs.queuedRequests.size must be(0)
       val elevatorStatuses = ecs.status()
-      elevatorStatuses.size must be(2)
+      elevatorStatuses.size must be(1)
+      ecs.step
+      ecs.step
       ecs.step
 
       val updatedElevatorStatuses = ecs.status()
+      updatedElevatorStatuses.head.floor must be (4)
+      updatedElevatorStatuses.head.direction must be (Some(UP))
+    }
+
+    it("should be stopped at the appropriate floor") {
+      val ecs = new SimpleEcs(10)
+      ecs.create(5)
+      val pickup1: Future[Option[Int]] = ecs.pickup(6, DOWN)
+      Await.result(pickup1, Duration.create(1000L, TimeUnit.MILLISECONDS))
+      ecs.queuedRequests.size must be(0)
+      val elevatorStatuses = ecs.status()
+      elevatorStatuses.size must be(1)
+      ecs.step
+      ecs.step
+      ecs.step
+      ecs.step
+      ecs.step
+      ecs.step
+
+      val updatedElevatorStatuses = ecs.status()
+      updatedElevatorStatuses.head.floor must be (6)
+      updatedElevatorStatuses.head.direction must be (None)
     }
   }
 

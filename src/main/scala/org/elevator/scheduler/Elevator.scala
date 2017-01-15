@@ -27,7 +27,7 @@ trait Elevator extends Actor {
   /**
     * Forces the elevator to step forward one unit (usually one floor).
     */
-  def step
+  def step(stepRequest: ElevatorStepRequest): Unit
 }
 
 /**
@@ -35,7 +35,8 @@ trait Elevator extends Actor {
   *
   * In a perfect world, each of these would be a set of actors in their own right.
   */
-case class ElevatorStatus(id: Int, floor: Int, direction: Option[Direction])
+case class ElevatorStatus(id: Int, floor: Int, direction: Option[Direction] = None,
+                          destination: Option[Int] = None, request: Option[ElevatorRequest] = None)
 case class ElevatorStatusRequest(callback: ElevatorStatusCallback)
 // This should really be implemented as a countdown latch, but 4 hours
 class ElevatorStatusCallback(expectedReporters: Int) extends CountDownLatch(expectedReporters: Int) {
@@ -81,6 +82,6 @@ class ElevatorRequestCallback(requestId: Int) extends CountDownLatch(1) {
   }
 }
 
-
+case class ElevatorStepRequest(numSteps: Int)
 case class ElevatorConfig(capacity: Int)
 

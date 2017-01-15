@@ -33,7 +33,7 @@ class SimpleEcs(floors: Int) extends ElevatorControlSystem {
   val statusTimeout: Int = 1000
 
   override def status(): Iterable[ElevatorStatus] = {
-    println(s"Creating countdown latch with ${elevators.size}")
+    println(s"Awaiting response from ${elevators.size} elevator(s).")
     val countDownLatch = new ElevatorStatusCallback(elevators.size)
     actorSystem.actorSelection(actorSystem / "*") ! new ElevatorStatusRequest(countDownLatch)
     countDownLatch.await(statusTimeout, TimeUnit.MILLISECONDS)
@@ -60,7 +60,7 @@ class SimpleEcs(floors: Int) extends ElevatorControlSystem {
   }
 
   def repeat(request: ElevatorRequest): Future[Option[Int]] = {
-    actorSystem.actorSelection(actorSystem / "*") ! request
+    actorSystem.actorSelection(actorSystem / "*").tell(request, floor)
     findElevator(request)
   }
 
@@ -82,7 +82,9 @@ class SimpleEcs(floors: Int) extends ElevatorControlSystem {
     request.callback.acceptedElevatorId
   }
 
-  override def step() = ???
+  override def step() = {
+    actorSystem.actorSelection(actorSystem / "*") ! ElevatorStepRequest(1)
+  }
 
   override def shutdown() = {
     actorSystem.terminate()
